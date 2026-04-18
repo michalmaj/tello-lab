@@ -1,0 +1,44 @@
+
+## `.gitignore`
+
+```gitignore
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDEs
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Runtime artifacts
+recordings/*
+!recordings/.gitkeep
+
+assets/models/*
+!assets/models/.gitkeep
+
+# Local environment files
+.env
+.env.*
