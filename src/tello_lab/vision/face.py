@@ -27,41 +27,54 @@ class FaceDetection:
         return (self.x + self.width // 2, self.y + self.height // 2)
 
     @property
+    def aspect_ratio(self) -> float:
+        """Return the bounding box width-to-height ratio."""
+        return self.width / self.height
+
+    @property
     def box(self) -> tuple[int, int, int, int]:
         """Return the bounding box as x, y, width, height."""
         return (self.x, self.y, self.width, self.height)
 
 
-class HaarFaceDetector:
-    """Simple OpenCV Haar Cascade face detector."""
+@dataclass(frozen=True)
+class FaceDetectorConfig:
+    """Configuration for Haar-based face detection."""
 
-    def __init__(
-        self,
-        *,
-        scale_factor: float = 1.1,
-        min_neighbors: int = 5,
-        min_face_size: tuple[int, int] = (60, 60),
-    ) -> None:
+    scale_factor: float = 1.15
+    min_neighbors: int = 8
+    min_face_size: tuple[int, int] = (90, 90)
+    min_area_ratio: float = 0.008
+    max_area_ratio: float = 0.55
+    min_aspect_ratio: float = 0.65
+    max_aspect_ratio: float = 1.35
+
+
+class HaarFaceDetector:
+    """Simple OpenCV Haar Cascade face detector with conservative filtering."""
+
+    def __init__(self, config: FaceDetectorConfig | None = None) -> None:
         cascade_path = Path(cv2.data.haarcascades) / "haarcascade_frontalface_default.xml"
         self.classifier = cv2.CascadeClassifier(str(cascade_path))
 
         if self.classifier.empty():
             raise RuntimeError(f"Failed to load Haar cascade: {cascade_path}")
 
-        self.scale_factor = scale_factor
-        self.min_neighbors = min_neighbors
-        self.min_face_size = min_face_size
+        self.config = config or FaceDetectorConfig()
 
     def detect(self, frame: np.ndarray) -> list[FaceDetection]:
-        """Detect faces in a video frame."""
+        """Detect plausible faces in a video frame."""
+        frame_height, frame_width = frame.shape[:2]
+        frame_area = frame_width * frame_height
+
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         gray = cv2.equalizeHist(gray)
 
         raw_faces = self.classifier.detectMultiScale(
             gray,
-            scaleFactor=self.scale_factor,
-            minNeighbors=self.min_neighbors,
-            minSize=self.min_face_size,
+            scaleFactor=self.config.scale_factor,
+            minNeighbors=self.config.min_neighbors,
+            minSize=self.config.min_face_size,
         )
 
         faces = [
@@ -74,7 +87,30 @@ class HaarFaceDetector:
             for x, y, width, height in raw_faces
         ]
 
-        return sorted(faces, key=lambda face: face.area, reverse=True)
+        plausible_faces = [
+            face
+            for face in faces
+            if self._is_plausible_face(face, frame_area=frame_area)
+        ]
+
+        return sorted(plausible_faces, key=lambda face: face.area, reverse=True)
+
+    def _is_plausible_face(self, face: FaceDetection, *, frame_area: int) -> bool:
+        area_ratio = face.area / frame_area
+
+        if area_ratio < self.config.min_area_ratio:
+            return False
+
+        if area_ratio > self.config.max_area_ratio:
+            return False
+
+        if face.aspect_ratio < self.config.min_aspect_ratio:
+            return False
+
+        if face.aspect_ratio > self.config.max_aspect_ratio:
+            return False
+
+        return True
 
 
 def draw_faces(
