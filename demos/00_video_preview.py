@@ -3,9 +3,9 @@ from __future__ import annotations
 import time
 
 import cv2
-from djitellopy import Tello
 
 from tello_lab.control.manual import ManualFlightController
+from tello_lab.core.drone import TelloDrone
 from tello_lab.core.telemetry import BatteryMonitor
 from tello_lab.ui.overlay import draw_status_overlay
 
@@ -15,29 +15,25 @@ CONTROLS_TEXT = "Controls: [t] takeoff  [l] land  [q] quit"
 
 def main() -> None:
     """Run a minimal live preview loop for the Tello drone."""
-    tello = Tello()
-    frame_read = None
+    drone = TelloDrone()
     manual_control: ManualFlightController | None = None
 
     try:
-        print("Connecting to Tello...")
-        tello.connect()
+        drone.connect()
 
-        battery_monitor = BatteryMonitor(tello.get_battery)
+        battery_monitor = BatteryMonitor(drone.tello.get_battery)
         battery = battery_monitor.refresh(force=True)
         print(f"Connected. Battery: {battery if battery is not None else 'N/A'}%")
 
-        print("Starting video stream...")
-        tello.streamon()
-        frame_read = tello.get_frame_read()
+        drone.start_video()
 
         manual_control = ManualFlightController(
-            tello,
+            drone.tello,
             movement_enabled=False,
         )
 
         while True:
-            frame = frame_read.frame
+            frame = drone.frame
 
             if frame is None:
                 time.sleep(0.01)
@@ -70,16 +66,7 @@ def main() -> None:
             manual_control.shutdown()
 
         cv2.destroyAllWindows()
-
-        try:
-            tello.streamoff()
-        except Exception:
-            pass
-
-        try:
-            tello.end()
-        except Exception:
-            pass
+        drone.close()
 
 
 if __name__ == "__main__":
