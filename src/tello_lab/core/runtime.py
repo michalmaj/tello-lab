@@ -6,12 +6,13 @@ from collections.abc import Callable
 import cv2
 import numpy as np
 
+from tello_lab.control.commands import ControlCommand
 from tello_lab.control.manual import ManualFlightController
 from tello_lab.core.drone import TelloDrone
 from tello_lab.core.telemetry import BatteryMonitor
 from tello_lab.ui.overlay import draw_status_overlay
 
-FrameOverlayCallback = Callable[[np.ndarray, "DemoRuntime"], None]
+FrameOverlayCallback = Callable[[np.ndarray, "DemoRuntime"], ControlCommand | None]
 
 
 class DemoRuntime:
@@ -60,12 +61,15 @@ class DemoRuntime:
                 display_frame = frame.copy()
                 self._draw_base_overlay(display_frame)
 
+                autonomous_command = None
                 if draw_extra_overlay is not None:
-                    draw_extra_overlay(display_frame, self)
+                    autonomous_command = draw_extra_overlay(display_frame, self)
 
                 cv2.imshow(self.window_name, display_frame)
 
-                update = self._tick_manual_control()
+                update = self._tick_manual_control(
+                    autonomous_command=autonomous_command,
+                )
 
                 if update.should_quit:
                     print(f"Exiting {self.window_name}.")
@@ -108,10 +112,7 @@ class DemoRuntime:
         self.battery = self.battery_monitor.refresh()
 
     def _draw_base_overlay(self, frame: np.ndarray) -> None:
-        if self.manual_control is None:
-            is_flying = False
-        else:
-            is_flying = self.manual_control.is_flying
+        is_flying = self.manual_control.is_flying if self.manual_control is not None else False
 
         draw_status_overlay(
             frame,
@@ -120,8 +121,8 @@ class DemoRuntime:
             controls_text=self.controls_text,
         )
 
-    def _tick_manual_control(self):
+    def _tick_manual_control(self, autonomous_command: ControlCommand | None = None):
         if self.manual_control is None:
             raise RuntimeError("Manual control is not initialized.")
 
-        return self.manual_control.tick()
+        return self.manual_control.tick(autonomous_command=autonomous_command)

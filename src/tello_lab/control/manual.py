@@ -15,18 +15,13 @@ class ManualControlUpdate:
     action: KeyboardAction = KeyboardAction.NONE
     command: ControlCommand | None = None
     should_quit: bool = False
+    used_manual_command: bool = False
 
 
 class ManualFlightController:
     """Shared manual flight controller for Tello demos.
 
-    This controller handles:
-    - takeoff
-    - landing
-    - quit request
-    - movement commands
-    - command timeout
-    - periodic RC command sending
+    Manual keyboard commands always have priority over autonomous commands.
     """
 
     def __init__(
@@ -53,11 +48,8 @@ class ManualFlightController:
         self._last_command_update = now
         self._last_rc_send = 0.0
 
-    def tick(self) -> ManualControlUpdate:
-        """Process keyboard input and send RC commands when needed.
-
-        Call this once per video loop iteration, usually after cv2.imshow().
-        """
+    def tick(self, autonomous_command: ControlCommand | None = None) -> ManualControlUpdate:
+        """Process keyboard input, autonomous command, and send RC commands."""
         now = time.monotonic()
 
         keyboard_input = read_keyboard_input(
@@ -66,6 +58,7 @@ class ManualFlightController:
         )
 
         should_quit = False
+        used_manual_command = False
 
         if keyboard_input.action == KeyboardAction.TAKEOFF:
             self.takeoff()
@@ -80,6 +73,11 @@ class ManualFlightController:
         if self.movement_enabled and keyboard_input.command is not None:
             self.current_command = keyboard_input.command
             self._last_command_update = now
+            used_manual_command = True
+
+        elif autonomous_command is not None and self.is_flying:
+            self.current_command = autonomous_command
+            self._last_command_update = now
 
         self._apply_command_timeout(now)
         self._send_current_command_if_needed(now)
@@ -88,6 +86,7 @@ class ManualFlightController:
             action=keyboard_input.action,
             command=keyboard_input.command,
             should_quit=should_quit,
+            used_manual_command=used_manual_command,
         )
 
     def takeoff(self) -> None:
