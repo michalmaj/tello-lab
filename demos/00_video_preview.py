@@ -5,7 +5,7 @@ import time
 import cv2
 from djitellopy import Tello
 
-from tello_lab.control.keyboard import KeyboardAction, read_keyboard_action
+from tello_lab.control.manual import ManualFlightController
 from tello_lab.ui.overlay import draw_status_overlay
 
 WINDOW_NAME = "tello-lab | 00_video_preview"
@@ -17,9 +17,9 @@ def main() -> None:
     """Run a minimal live preview loop for the Tello drone."""
     tello = Tello()
     frame_read = None
-    is_flying = False
     battery: int | None = None
     last_battery_refresh = 0.0
+    manual_control: ManualFlightController | None = None
 
     try:
         print("Connecting to Tello...")
@@ -31,6 +31,11 @@ def main() -> None:
         print("Starting video stream...")
         tello.streamon()
         frame_read = tello.get_frame_read()
+
+        manual_control = ManualFlightController(
+            tello,
+            movement_enabled=False,
+        )
 
         while True:
             frame = frame_read.frame
@@ -51,43 +56,26 @@ def main() -> None:
             draw_status_overlay(
                 display_frame,
                 battery=battery,
-                is_flying=is_flying,
+                is_flying=manual_control.is_flying,
                 controls_text=CONTROLS_TEXT,
             )
             cv2.imshow(WINDOW_NAME, display_frame)
 
-            action = read_keyboard_action()
+            update = manual_control.tick()
 
-            if action == KeyboardAction.TAKEOFF:
-                if not is_flying:
-                    print("Takeoff...")
-                    tello.takeoff()
-                    is_flying = True
-
-            elif action == KeyboardAction.LAND:
-                if is_flying:
-                    print("Landing...")
-                    tello.land()
-                    is_flying = False
-
-            elif action == KeyboardAction.QUIT:
-                if is_flying:
-                    print("Landing before exit...")
-                    tello.land()
-                    is_flying = False
+            if update.should_quit:
                 print("Exiting preview loop.")
                 break
 
     except KeyboardInterrupt:
         print("Interrupted by user.")
-        if is_flying:
-            try:
-                print("Landing after keyboard interrupt...")
-                tello.land()
-            except Exception:
-                pass
+        if manual_control is not None:
+            manual_control.shutdown()
 
     finally:
+        if manual_control is not None:
+            manual_control.shutdown()
+
         cv2.destroyAllWindows()
 
         try:
