@@ -5,45 +5,12 @@ import time
 import cv2
 from djitellopy import Tello
 
+from tello_lab.control.keyboard import KeyboardAction, read_keyboard_action
+from tello_lab.ui.overlay import draw_status_overlay
+
 WINDOW_NAME = "tello-lab | 00_video_preview"
 BATTERY_REFRESH_SECONDS = 2.0
-
-
-def draw_overlay(frame, battery: int | None, is_flying: bool) -> None:
-    """Draw the demo HUD on top of the current frame."""
-    status_text = "FLYING" if is_flying else "READY"
-    battery_text = f"Battery: {battery}%" if battery is not None else "Battery: N/A"
-
-    cv2.putText(
-        frame,
-        battery_text,
-        (16, 32),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.8,
-        (0, 255, 0),
-        2,
-        cv2.LINE_AA,
-    )
-    cv2.putText(
-        frame,
-        f"State: {status_text}",
-        (16, 64),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.8,
-        (0, 255, 0),
-        2,
-        cv2.LINE_AA,
-    )
-    cv2.putText(
-        frame,
-        "Controls: [t] takeoff  [l] land  [q] quit",
-        (16, frame.shape[0] - 20),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.65,
-        (255, 255, 255),
-        2,
-        cv2.LINE_AA,
-    )
+CONTROLS_TEXT = "Controls: [t] takeoff  [l] land  [q] quit"
 
 
 def main() -> None:
@@ -81,24 +48,29 @@ def main() -> None:
                 last_battery_refresh = now
 
             display_frame = frame.copy()
-            draw_overlay(display_frame, battery=battery, is_flying=is_flying)
+            draw_status_overlay(
+                display_frame,
+                battery=battery,
+                is_flying=is_flying,
+                controls_text=CONTROLS_TEXT,
+            )
             cv2.imshow(WINDOW_NAME, display_frame)
 
-            key = cv2.waitKey(1) & 0xFF
+            action = read_keyboard_action()
 
-            if key == ord("t"):
+            if action == KeyboardAction.TAKEOFF:
                 if not is_flying:
                     print("Takeoff...")
                     tello.takeoff()
                     is_flying = True
 
-            elif key == ord("l"):
+            elif action == KeyboardAction.LAND:
                 if is_flying:
                     print("Landing...")
                     tello.land()
                     is_flying = False
 
-            elif key == ord("q"):
+            elif action == KeyboardAction.QUIT:
                 if is_flying:
                     print("Landing before exit...")
                     tello.land()
