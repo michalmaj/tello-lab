@@ -19,8 +19,9 @@ RC_SPEED = 35
 YAW_SPEED = 45
 
 CONTROLS_TEXT = (
-    "Controls: [t] takeoff  [l] land  [q] quit "
-    "[w/s/a/d] move  [r/f] up/down  [arrows] forward/back/yaw  [space] hover"
+    "Controls: [t] takeoff  [l] land  [q] quit\n"
+    "Move: [w/s/a/d] horizontal  [r/f] up/down\n"
+    "Yaw: [left/right arrows] rotate  [space] hover"
 )
 
 

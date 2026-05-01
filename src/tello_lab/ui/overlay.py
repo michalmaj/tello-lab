@@ -17,12 +17,14 @@ def draw_status_overlay(
 
     draw_text(frame, battery_text, position=(16, 32), scale=0.8)
     draw_text(frame, f"State: {status_text}", position=(16, 64), scale=0.8)
-    draw_text(
+
+    draw_text_lines(
         frame,
-        controls_text,
-        position=(16, frame.shape[0] - 20),
-        scale=0.65,
+        controls_text.splitlines(),
+        position=(16, frame.shape[0] - 56),
+        scale=0.55,
         color=(255, 255, 255),
+        line_height=24,
     )
 
 
@@ -46,3 +48,27 @@ def draw_text(
         thickness,
         cv2.LINE_AA,
     )
+
+
+def draw_text_lines(
+    frame: np.ndarray,
+    lines: list[str],
+    *,
+    position: tuple[int, int],
+    scale: float = 0.7,
+    color: tuple[int, int, int] = (0, 255, 0),
+    thickness: int = 2,
+    line_height: int = 28,
+) -> None:
+    """Draw multiple readable text lines on a video frame."""
+    x, y = position
+
+    for index, line in enumerate(lines):
+        draw_text(
+            frame,
+            line,
+            position=(x, y + index * line_height),
+            scale=scale,
+            color=color,
+            thickness=thickness,
+        )
