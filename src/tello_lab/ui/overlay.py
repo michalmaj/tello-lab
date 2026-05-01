@@ -18,10 +18,12 @@ def draw_status_overlay(
     draw_text(frame, battery_text, position=(16, 32), scale=0.8)
     draw_text(frame, f"State: {status_text}", position=(16, 64), scale=0.8)
 
-    draw_text_lines(
+    control_lines = controls_text.splitlines()
+    draw_text_lines_at_bottom(
         frame,
-        controls_text.splitlines(),
-        position=(16, frame.shape[0] - 56),
+        control_lines,
+        margin_left=16,
+        margin_bottom=20,
         scale=0.55,
         color=(255, 255, 255),
         line_height=24,
@@ -72,3 +74,31 @@ def draw_text_lines(
             color=color,
             thickness=thickness,
         )
+
+
+def draw_text_lines_at_bottom(
+    frame: np.ndarray,
+    lines: list[str],
+    *,
+    margin_left: int = 16,
+    margin_bottom: int = 20,
+    scale: float = 0.7,
+    color: tuple[int, int, int] = (0, 255, 0),
+    thickness: int = 2,
+    line_height: int = 28,
+) -> None:
+    """Draw multiple text lines anchored to the bottom of a video frame."""
+    if not lines:
+        return
+
+    start_y = frame.shape[0] - margin_bottom - (len(lines) - 1) * line_height
+
+    draw_text_lines(
+        frame,
+        lines,
+        position=(margin_left, start_y),
+        scale=scale,
+        color=color,
+        thickness=thickness,
+        line_height=line_height,
+    )
