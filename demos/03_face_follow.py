@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 
 from tello_lab.control.commands import ControlCommand
+from tello_lab.control.pid import PIDConfig, PIDLimits
 from tello_lab.control.tracker import FaceFollowConfig, FaceFollowController
 from tello_lab.core.runtime import DemoRuntime
 from tello_lab.ui.overlay import draw_text
@@ -24,12 +25,38 @@ CONTROLS_TEXT = (
 
 FOLLOW_CONFIG = FaceFollowConfig(
     target_area_ratio=0.09,
-    x_deadzone=0.12,
-    y_deadzone=0.14,
+
+    # Smaller deadzones make the drone react earlier.
+    x_deadzone=0.07,
+    y_deadzone=0.08,
+
+    # Keep distance control unchanged.
     area_deadzone=0.30,
+
     enable_yaw=True,
     enable_vertical=True,
     enable_distance=True,
+
+    # More responsive left/right rotation.
+    yaw_pid=PIDConfig(
+        kp=70.0,
+        kd=6.0,
+        output_limits=PIDLimits(-55.0, 55.0),
+    ),
+
+    # More responsive up/down movement.
+    vertical_pid=PIDConfig(
+        kp=45.0,
+        kd=4.0,
+        output_limits=PIDLimits(-40.0, 40.0),
+    ),
+
+    # Keep forward/back behavior conservative.
+    distance_pid=PIDConfig(
+        kp=28.0,
+        kd=2.0,
+        output_limits=PIDLimits(-25.0, 25.0),
+    ),
 )
 
 
